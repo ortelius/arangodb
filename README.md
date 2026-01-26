@@ -176,3 +176,12 @@ Tested with:
 [https://www.arangodb.com/docs/](https://www.arangodb.com/docs/)
 [https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
 [https://www.arangodb.com/docs/stable/deployment-kubernetes.html](https://www.arangodb.com/docs/stable/deployment-kubernetes.html)
+
+
+### Community
+
+- Website: [https://ortelius.io](https://ortelius.io)
+- GitHub: [https://github.com/ortelius](https://github.com/ortelius)
+- Discord: [https://discord.gg/ortelius](https://discord.gg/ortelius)
+
+Maintained by the Ortelius open-source community.

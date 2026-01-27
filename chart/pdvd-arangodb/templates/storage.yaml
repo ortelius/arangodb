@@ -19,7 +19,6 @@ kind: StorageClass
 metadata:
   name: pdvd-sc
 provisioner: pd.csi.storage.gke.io
-allowVolumeExpansion: true
 parameters:
   type: pd-standard
 reclaimPolicy: Retain

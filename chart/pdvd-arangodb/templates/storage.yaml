@@ -1,5 +1,4 @@
-# Start the conditional rendering. Only ONE of these blocks will be executed.
-{{- if contains "eks" (.Capabilities.KubeVersion.Version | toString) }}
+{{- if contains "eks" (.Capabilities.KubeVersion.GitVersion | toString) }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -11,18 +10,20 @@ parameters:
   encrypted: "true"
 reclaimPolicy: Retain
 allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
+volumeBindingMode: Immediate   
 
-{{- else if contains "gke" (.Capabilities.KubeVersion.Version | toString) }}
+{{- else if contains "gke" (.Capabilities.KubeVersion.GitVersion | toString) }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: pdvd-sc
 provisioner: pd.csi.storage.gke.io
-allowVolumeExpansion: true
 parameters:
   type: pd-standard
 reclaimPolicy: Retain
 allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
+volumeBindingMode: Immediate   
+
+{{- else }}
+# Fallback: no StorageClass created — ensure pdvd-sc exists in your cluster
 {{- end }}

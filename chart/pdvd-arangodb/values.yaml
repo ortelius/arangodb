@@ -2,3 +2,4 @@ replicaCount: 1
 image:
   repository: arangodb
   tag: 3.12.7
+  pullPolicy: IfNotPresent

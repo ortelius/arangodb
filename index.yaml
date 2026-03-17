@@ -2,6 +2,17 @@ apiVersion: v1
 entries:
   pdvd-arangodb:
   - apiVersion: v2
+    appVersion: 12.0.18
+    created: "2026-03-17T21:39:51.359650765Z"
+    description: Arango Statefulset
+    digest: 990352deb33db24f67750793779b4812f7f1380158ae3217a78dd32cb92d6cef
+    icon: https://ortelius.github.io/pdvd-charts/ortelius.svg
+    name: pdvd-arangodb
+    type: application
+    urls:
+    - https://github.com/ortelius/pdvd-arangodb/releases/download/pdvd-arangodb-12.0.18/pdvd-arangodb-12.0.18.tgz
+    version: 12.0.18
+  - apiVersion: v2
     appVersion: 12.0.17
     created: "2026-03-11T21:16:32.744214561Z"
     description: Arango Statefulset
@@ -166,4 +177,4 @@ entries:
     urls:
     - https://github.com/ortelius/pdvd-arangodb/releases/download/pdvd-arangodb-12.0.0/pdvd-arangodb-12.0.0.tgz
     version: 12.0.0
-generated: "2026-03-11T21:16:32.743884533Z"
+generated: "2026-03-17T21:39:51.358982636Z"

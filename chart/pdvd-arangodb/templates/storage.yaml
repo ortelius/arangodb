@@ -10,7 +10,7 @@ parameters:
   encrypted: "true"
 reclaimPolicy: Retain
 allowVolumeExpansion: true
-volumeBindingMode: Immediate   
+volumeBindingMode: WaitForFirstConsumer
 
 {{- else if contains "gke" (.Capabilities.KubeVersion.GitVersion | toString) }}
 apiVersion: storage.k8s.io/v1
@@ -22,7 +22,7 @@ parameters:
   type: pd-standard
 reclaimPolicy: Retain
 allowVolumeExpansion: true
-volumeBindingMode: Immediate   
+volumeBindingMode: WaitForFirstConsumer
 
 {{- else }}
 # Fallback: no StorageClass created — ensure pdvd-sc exists in your cluster

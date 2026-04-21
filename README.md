@@ -43,8 +43,8 @@ This StatefulSet-based deployment enables:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/pdvd-arangodb/arangodb-statefulset.git
-cd arangodb-statefulset
+git clone https://github.com/ortelius/arangodb.git
+cd arangodb
 
 ```
 

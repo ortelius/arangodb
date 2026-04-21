@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: pdvd-sc
+  name: ortelius-sc
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
@@ -16,7 +16,7 @@ volumeBindingMode: WaitForFirstConsumer
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: pdvd-sc
+  name: ortelius-sc
 provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-standard
@@ -25,5 +25,5 @@ allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
 
 {{- else }}
-# Fallback: no StorageClass created — ensure pdvd-sc exists in your cluster
+# Fallback: no StorageClass created — ensure ortelius-sc exists in your cluster
 {{- end }}

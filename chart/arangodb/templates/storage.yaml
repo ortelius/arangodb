@@ -24,8 +24,7 @@ parameters:
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
-
-{{- else if contains "kind" (.Capabilities.KubeVersion.GitVersion | toString) }}
+{{- else }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -38,6 +37,4 @@ parameters:
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
-{{- else }}
-# Fallback: no StorageClass created — ensure ortelius-sc exists in your cluster
 {{- end }}

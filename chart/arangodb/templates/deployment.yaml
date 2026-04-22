@@ -28,10 +28,12 @@ spec:
                   name: arangodb
                   key: DBPassword
           volumeMounts:
-          - name: arangodata
-            mountPath: /var/lib/arangodb3
-          - name: arangoappsdata
-            mountPath: /var/lib/arangodb3-apps
+            - name: arangodata
+              mountPath: /var/lib/arangodb3
+              subPath: arangodb3
+            - name: arangodata
+              mountPath: /var/lib/arangodb3-apps
+              subPath: arangodb3-apps
   volumeClaimTemplates:
   - metadata:
       name: arangodata
@@ -41,11 +43,3 @@ spec:
       resources:
         requests:
           storage: 10Gi
-  - metadata:
-      name: arangoappsdata
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "ortelius-sc"
-      resources:
-        requests:
-          storage: 1Gi

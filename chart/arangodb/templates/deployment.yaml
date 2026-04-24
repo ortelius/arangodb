@@ -42,4 +42,4 @@ spec:
       storageClassName: "ortelius-sc"
       resources:
         requests:
-          storage: 10Gi
+          storage: 100Gi

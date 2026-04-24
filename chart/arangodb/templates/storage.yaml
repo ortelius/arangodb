@@ -20,7 +20,7 @@ metadata:
   name: ortelius-sc
 provisioner: pd.csi.storage.gke.io
 parameters:
-  type: pd-standard
+  type: pd-balanced
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer

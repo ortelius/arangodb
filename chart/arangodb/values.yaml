@@ -6,7 +6,7 @@
 # changes no rendered output beyond additive template plumbing, so it is
 # safe to merge before the node pools are in service.
 #
-# Production values (800m / 4Gi, workload=system, priorityClassName) live in
+# Production values (800m / 4Gi, workload=system) live in
 # the umbrella chart at:
 #   ortelius/helmcharts -> charts/ortelius/values.yaml -> arangodb:
 # Apply those only AFTER system-pool is created and ArangoDB has migrated.
@@ -121,9 +121,6 @@ nodeSelector:
 tolerations: []
 
 affinity: {}
-
-priorityClassName: ""
-  # database-critical
 
 topologySpreadConstraints: []
 

@@ -116,7 +116,7 @@ spec:
             failureThreshold: {{ .Values.probes.startup.failureThreshold }}
           readinessProbe:
             httpGet:
-              path: /_api/version
+              path: /_admin/server/availability
               port: 8529
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}

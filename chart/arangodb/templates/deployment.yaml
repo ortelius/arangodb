@@ -1,7 +1,27 @@
+---
+# Copyright (c) 2021 Linux Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "microservice.name" . }}
+  labels:
+    app: {{ include "microservice.name" . }}
+    helm.sh/chart: {{ include "microservice.chart" . }}
+    app.kubernetes.io/name: {{ include "microservice.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   updateStrategy:
@@ -9,24 +29,109 @@ spec:
   serviceName: {{ include "microservice.name" . }}
   selector:
     matchLabels:
-      app:  {{ include "microservice.name" . }}
+      app: {{ include "microservice.name" . }}
   template:
     metadata:
       labels:
         app: {{ include "microservice.name" . }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 60 }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ include "microservice.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
-            - containerPort: 8529
+            - name: http
+              containerPort: 8529
+              protocol: TCP
+          {{- if or (and .Values.rocksdb .Values.rocksdb.enabled) .Values.extraArgs }}
+          args:
+            {{- if and .Values.rocksdb .Values.rocksdb.enabled }}
+            - --rocksdb.block-cache-size={{ .Values.rocksdb.blockCacheSize }}
+            - --rocksdb.total-write-buffer-size={{ .Values.rocksdb.totalWriteBufferSize }}
+            - --rocksdb.enforce-block-cache-size-limit={{ .Values.rocksdb.enforceBlockCacheSizeLimit }}
+            {{- end }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           env:
             - name: ARANGO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: arangodb
                   key: DBPassword
+            {{- if and .Values.rocksdb .Values.rocksdb.enabled .Values.rocksdb.overrideTotalMemory }}
+            # Without this ArangoDB sizes caches from host memory and is
+            # OOM-killed once it exceeds resources.limits.memory.
+            - name: ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY
+              value: {{ .Values.rocksdb.overrideTotalMemory | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.probes.enabled }}
+          startupProbe:
+            tcpSocket:
+              port: 8529
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /_api/version
+              port: 8529
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            tcpSocket:
+              port: 8529
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
           volumeMounts:
             - name: arangodata
               mountPath: /var/lib/arangodb3
@@ -35,11 +140,11 @@ spec:
               mountPath: /var/lib/arangodb3-apps
               subPath: arangodb3-apps
   volumeClaimTemplates:
-  - metadata:
-      name: arangodata
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "ortelius-sc"
-      resources:
-        requests:
-          storage: 100Gi
+    - metadata:
+        name: arangodata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.storage.storageClassName | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}

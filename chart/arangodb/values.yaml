@@ -1,5 +1,199 @@
+---
+# ---------------------------------------------------------------------------
+# ortelius/arangodb
+#
+# Defaults here MATCH THE CURRENTLY RUNNING DEPLOYMENT. Committing this
+# changes no rendered output beyond additive template plumbing, so it is
+# safe to merge before the node pools are in service.
+#
+# Production values (800m / 4Gi, workload=system, priorityClassName) live in
+# the umbrella chart at:
+#   ortelius/helmcharts -> charts/ortelius/values.yaml -> arangodb:
+# Apply those only AFTER system-pool is created and ArangoDB has migrated.
+# ---------------------------------------------------------------------------
+
 replicaCount: 1
+
 image:
   repository: arangodb
   tag: 3.12.7
   pullPolicy: IfNotPresent
+
+# Connection details -> rendered into the `arangodb` Secret (secret.yaml).
+# arangodb_pass has no usable default; secret.yaml's `required` guard fails
+# the render if it is not supplied by the umbrella chart.
+arangodb_pass: ""
+arangodb_user: "root"
+arangodb_host: "localhost"
+arangodb_port: "8529"
+arangodb_name: "vulnmgt"
+
+storage:
+  size: 100Gi
+  storageClassName: ortelius-sc
+
+service:
+  type: NodePort
+  port: 8529
+
+# ---------------------------------------------------------------------------
+# Resources
+#
+# Measured steady state after dropping the four redundant edge indexes on
+# cve2purl / release2cve / sbom2purl: 5m CPU, ~1305Mi memory, with RocksDB
+# fully idle (compaction_pending=0, num_running_compactions=0). The prior
+# 1421m was write amplification from ~4.2M index entries the query planner
+# never used.
+#
+# 300m is ~60x measured steady state -- headroom for query bursts and for
+# `cve` growing on each OSV sync. Do not RAISE this above the current live
+# request (500m) without checking node capacity first; lowering is always
+# safe, since a smaller request cannot make a scheduled pod unschedulable.
+#
+# memory request == limit gives Guaranteed QoS for this single-container pod,
+# which keeps the kubelet from evicting the database under node pressure.
+#
+# The CPU limit is intentionally absent. CFS throttling stalls RocksDB
+# compaction threads, which backs up the write path and makes contention
+# worse than the throttling was meant to prevent. The request reserves the
+# floor; on a dedicated node pool nothing else competes for the remainder.
+#
+# Production override (post-migration, on system-pool / e2-standard-2):
+#   requests: {cpu: 300m, memory: 4Gi}
+#   limits:   {memory: 4Gi}
+# Memory stays at 4Gi: the ~2.8GB dataset still benefits from block cache,
+# and memory was never the bottleneck.
+# ---------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 300m
+    memory: 2Gi
+  limits:
+    memory: 2Gi
+
+# ---------------------------------------------------------------------------
+# RocksDB
+#
+# ArangoDB sizes its caches from HOST memory, not the cgroup limit. Without
+# overrideTotalMemory it will allocate past resources.limits.memory and be
+# OOM-killed (exit 137).
+#
+# INVARIANT: overrideTotalMemory (bytes) MUST equal resources.limits.memory.
+# They are expressed in different units and so drift apart easily; NOTES.txt
+# warns at install time when they do not match.
+#
+# Production override (with a 4Gi limit):
+#   overrideTotalMemory:  "4294967296"   # 4Gi
+#   blockCacheSize:       "2147483648"   # 2Gi
+#   totalWriteBufferSize: "536870912"    # 512Mi
+# ---------------------------------------------------------------------------
+rocksdb:
+  enabled: true
+  overrideTotalMemory: "2147483648"   # 2Gi  == resources.limits.memory
+  blockCacheSize: "1073741824"        # 1Gi  (~50% of limit)
+  totalWriteBufferSize: "268435456"   # 256Mi
+  enforceBlockCacheSizeLimit: true
+
+# Additional arangod flags, appended after the rocksdb block above.
+extraArgs: []
+  # - --log.level=info
+  # - --query.slow-threshold=0.5
+
+extraEnv: []
+  # - name: SOME_VAR
+  #   value: "value"
+
+# ---------------------------------------------------------------------------
+# Scheduling
+#
+# Left at the current hardcoded selector. Set workload=system from the
+# umbrella chart only AFTER system-pool exists -- no node carries that label
+# until then, and the pod would go Pending immediately.
+#
+# The target pool must be in the same zone as the PV. The PVC's affinity is
+# topology.gke.io/zone in [us-central1-a]; on this regional cluster, nodes in
+# us-central1-b/c cannot mount it.
+# ---------------------------------------------------------------------------
+nodeSelector:
+  kubernetes.io/os: linux
+  # workload: system
+
+tolerations: []
+
+affinity: {}
+
+priorityClassName: ""
+  # database-critical
+
+topologySpreadConstraints: []
+
+# ---------------------------------------------------------------------------
+# Probes
+#
+# DISABLED BY DEFAULT. The chart previously had no probes at all, so enabling
+# them is a real behavior change: this would be the first time liveness ever
+# evaluates against this database. Turn on during the migration window, with
+# someone watching.
+#
+# ArangoDB replays its write-ahead log on startup. startupProbe allows
+# 10 minutes (10s x 60) before livenessProbe begins evaluating -- without it,
+# a liveness probe on a slow-recovering database produces a crashloop.
+# Liveness checks only the socket, so a slow query cannot trigger a restart;
+# readiness uses the HTTP API.
+# ---------------------------------------------------------------------------
+probes:
+  enabled: false
+  startup:
+    periodSeconds: 10
+    failureThreshold: 60
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Security context
+#
+# EMPTY BY DEFAULT. fsGroup triggers a recursive chown at mount time; on the
+# existing 100Gi volume that can add minutes to startup if current ownership
+# does not match. fsGroupChangePolicy: OnRootMismatch avoids the relabel when
+# ownership already matches, but that is unverified against the live PV.
+#
+# Enable during the migration window:
+#   podSecurityContext:
+#     fsGroup: 1000
+#     fsGroupChangePolicy: OnRootMismatch
+#   securityContext:
+#     runAsNonRoot: true
+#     runAsUser: 1000
+#     allowPrivilegeEscalation: false
+#     capabilities: {drop: [ALL]}
+# ---------------------------------------------------------------------------
+podSecurityContext: {}
+
+securityContext: {}
+
+terminationGracePeriodSeconds: 60
+
+podAnnotations: {}
+podLabels: {}
+
+# PodDisruptionBudget. Only meaningful once replicaCount > 1 and the chart
+# grows real cluster support (agents / coordinators / dbservers). With a
+# single replica a PDB blocks node drains rather than protecting anything.
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+nameOverride: ""
+fullnameOverride: ""

@@ -2,6 +2,17 @@ apiVersion: v1
 entries:
   arangodb:
   - apiVersion: v2
+    appVersion: 12.0.30
+    created: "2026-11-06T20:03:15.488530591Z"
+    description: Arango Statefulset
+    digest: bc6a4ba474bf45cd430e9d96e11bfffc8bd491cf542eb2bc6e68c942e18b641e
+    icon: https://ortelius.github.io/helmcharts/ortelius.svg
+    name: arangodb
+    type: application
+    urls:
+    - https://github.com/ortelius/arangodb/releases/download/v12.0.30/arangodb-12.0.30.tgz
+    version: 12.0.30
+  - apiVersion: v2
     appVersion: 12.0.29
     created: "2026-11-06T20:00:08.715134078Z"
     description: Arango Statefulset
@@ -122,4 +133,4 @@ entries:
     urls:
     - https://github.com/ortelius/arangodb/releases/download/v12.0.19/arangodb-12.0.19.tgz
     version: 12.0.19
-generated: "2026-11-06T20:00:08.714341958Z"
+generated: "2026-11-06T20:03:15.487894885Z"
